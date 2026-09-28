@@ -1,0 +1,44 @@
+name: Build RgbSplitVhs
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilar mod (ARM64)
+        run: |
+          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}}"
+          echo "NDK: $NDK"
+          CXX="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang++"
+          mkdir -p dist/pack
+          "$CXX" -std=c++20 -O2 -fPIC -shared -fvisibility=hidden -static-libstdc++ \
+            -Wl,-z,max-page-size=16384 -Wl,--build-id -s \
+            src/RgbSplitVhs.cpp -o dist/pack/libRgbSplitVhs.so \
+            -lEGL -lGLESv3 -llog -ldl
+          cat > dist/pack/manifest.json <<'EOF2'
+          {
+            "type": "preload-native",
+            "name": "RgbSplitVhs",
+            "author": "tu-nombre",
+            "version": "1.0.0",
+            "entry": "libRgbSplitVhs.so",
+            "minecraft_versions": ["1.26.5*"]
+          }
+          EOF2
+          cd dist/pack
+          zip -X ../RgbSplitVhs.levipack manifest.json libRgbSplitVhs.so
+          cd ..
+          unzip -l RgbSplitVhs.levipack
+          file pack/libRgbSplitVhs.so
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RgbSplitVhs
+          path: |
+            dist/RgbSplitVhs.levipack
+            dist/pack/libRgbSplitVhs.so
