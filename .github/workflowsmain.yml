@@ -1,4 +1,4 @@
-name: Build RgbSplitVhs
+name: .github/workflows/build.yml
 
 on:
   push:
