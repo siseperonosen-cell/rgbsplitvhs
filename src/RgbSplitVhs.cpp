@@ -534,4 +534,28 @@ void* installThread(void*) {
     gRealSwap = reinterpret_cast<EGLBoolean (*)(EGLDisplay, EGLSurface)>(real);
 
     bool loggedWait = false;
-    for (int attempt = 0; attempt < 1500; ++attempt) {  // ~5 
+    for (int attempt = 0; attempt < 1500; ++attempt) {  // ~5 min
+        usleep(200 * 1000);
+        ScanCtx c{(uintptr_t)real, (uintptr_t)&hookedSwap, false, 0};
+        dl_iterate_phdr(scanCallback, &c);
+        if (!c.libFound) {
+            if (!loggedWait) { LOGI("esperando libminecraftpe.so..."); loggedWait = true; }
+            continue;
+        }
+        if (c.patched > 0) {
+            LOGI("hook instalado (%d entradas parcheadas)", c.patched);
+            return nullptr;
+        }
+        if (attempt % 25 == 0) LOGI("libminecraftpe.so cargada, sin entradas de eglSwapBuffers todavia");
+    }
+    LOGE("no se pudo instalar el hook");
+    return nullptr;
+}
+
+}  // namespace
+
+__attribute__((constructor)) static void onLoad() {
+    LOGI("RgbSplitVhs cargado");
+    pthread_t t;
+    if (pthread_create(&t, nullptr, installThread, nullptr) == 0) pthread_detach(t);
+}
